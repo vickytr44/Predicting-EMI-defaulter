@@ -1,0 +1,90 @@
+import pandas as pa
+data_train= pa.read_csv(r'C:\Users\vicky\Desktop\DataSet\Train.csv')
+data_test= pa.read_csv(r'C:\Users\vicky\Desktop\DataSet\Test.csv')
+
+X_train = data_train.copy()
+X_train.drop(labels = 'Col2', axis = 1, inplace = True)
+y_train=data_train[['Col2']].copy()
+X_test = data_test.copy()
+
+#find columns with null
+colmn=X_train.isnull().sum()
+colmn=colmn.to_dict()
+len(colmn)
+
+colmn_with_null=colmn.copy()
+for key in colmn:
+    if colmn[key]==0:
+        del colmn_with_null[key]
+len(colmn_with_null)
+
+
+Total_rows=len(y_train)
+Column_to_be_removed=[]
+for key in colmn_with_null:
+    if (colmn_with_null[key]/Total_rows)>=0.70:
+        Column_to_be_removed.append(key)
+len(Column_to_be_removed)
+
+Columns_to_be_imputed=[]
+for key in colmn_with_null:
+    if (colmn_with_null[key]/Total_rows)<0.70:
+        Columns_to_be_imputed.append(key)
+len(Columns_to_be_imputed)
+
+for item in Column_to_be_removed:
+    X_train.drop(labels = item, axis = 1, inplace = True)
+    X_test.drop(labels = item, axis = 1, inplace = True)
+
+    
+X_train=X_train.interpolate(method='linear', limit_direction='forward', axis=0)
+X_test=X_test.interpolate(method='linear', limit_direction='forward', axis=0)
+
+
+
+xtrain_null=X_train.isnull().sum()
+for key,value in xtrain_null.items():
+    if xtrain_null[key]>0:
+        X_train.fillna(X_train[key].mode()[0], inplace=True)
+        
+xtest_null=X_test.isnull().sum()        
+for key,value in xtest_null.items():
+    if xtest_null[key]>0:
+        X_test.fillna(X_test[key].mode()[0], inplace=True)
+
+
+X_train.drop(labels = 'Col1', axis = 1, inplace = True)
+X_test.drop(labels = 'Col1', axis = 1, inplace = True)
+
+from sklearn.preprocessing import StandardScaler
+sc_X = StandardScaler()
+X_trainsc = sc_X.fit_transform(X_train.values)
+X_testsc = sc_X.fit_transform(X_test.values)
+
+
+import pandas as pd
+X_train = pd.DataFrame(X_trainsc, index=X_train.index, columns=X_train.columns)
+X_test = pd.DataFrame(X_testsc, index=X_test.index, columns=X_test.columns)
+
+from sklearn.svm import SVC
+def Prediction_classification_model(model,X_train,y_train,X_test, predictors, outcome):
+    #Fit the model:
+    model.fit(X_train[predictors],y_train[outcome])
+  
+    #Make predictions on training set:
+    predictions = model.predict(X_test[predictors])
+    return predictions
+
+ 
+outcome_var = 'Col2'
+model = SVC(kernel='rbf')
+#predictor_var = var_mod
+predictor_var = list(X_train.columns)
+
+
+
+res=Prediction_classification_model(model, X_train,y_train,X_test,predictor_var,outcome_var)
+
+
+pd.DataFrame(res, columns = ['Col2']).to_csv("hdfc_pred.csv", index = False)
+
